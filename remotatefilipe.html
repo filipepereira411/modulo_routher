@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controlo Total & Monitorização P2P</title>
+    <title>Painel de Controlo Direto (Sem Tokens)</title>
     <style>
         :root {
             --bg-main: #0c0c0e;
@@ -67,7 +67,6 @@
 
         .panel-header h2 { margin: 0; font-size: 18px; font-weight: 600; }
 
-        /* MÓDULO DE VÍDEO (ECRÃ REMOTO) */
         .video-container {
             position: relative;
             background-color: #000;
@@ -79,12 +78,6 @@
             cursor: crosshair;
         }
 
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
         .video-overlay {
             position: absolute;
             top: 12px;
@@ -94,6 +87,7 @@
             border-radius: 4px;
             font-size: 12px;
             border: 1px solid var(--border);
+            transition: background 0.3s ease;
         }
 
         .row-inputs {
@@ -104,7 +98,7 @@
         }
 
         label { display: block; font-size: 13px; color: var(--text-sub); margin-bottom: 6px; font-weight: 500; }
-        select, input, textarea {
+        input {
             background-color: var(--bg-main);
             color: var(--text-main);
             border: 1px solid var(--border);
@@ -115,8 +109,6 @@
             width: 100%;
             box-sizing: border-box;
         }
-        
-        textarea { height: 60px; resize: none; font-family: monospace; font-size: 11px; }
 
         .btn-group {
             display: grid;
@@ -135,6 +127,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
+            width: 100%;
         }
 
         button:hover { background-color: #005a9e; transform: translateY(-1px); }
@@ -153,7 +146,7 @@
             font-family: 'Courier New', monospace;
             font-size: 12px;
             color: #8ed0f9;
-            height: 180px;
+            height: 160px;
             overflow-y: auto;
             text-align: left;
             width: 100%;
@@ -164,24 +157,24 @@
 <body>
 
     <div class="dashboard-title">
-        <h1>🎛️ Painel de Controlo Total & Periféricos</h1>
-        <p>Acesso Completo a Dispositivos Remotos em Rede Local (192.168.X.X)</p>
+        <h1>🎛️ Painel de Controlo Direto Local</h1>
+        <p>Ligação instantânea a dispositivos na sub-rede via WebSockets (Sem Tokens)</p>
     </div>
 
     <div class="layout-container">
         
-        <!-- COLUNA ESQUERDA: STREAMING E MOUSE INPUT -->
+        <!-- COLUNA ESQUERDA: ÁREA DE CAPTURA DO RATO -->
         <div>
             <div class="panel-card">
                 <div class="panel-header">
-                    <h2>🖥️ Ecrã Remoto em Tempo Real (WebRTC Video)</h2>
+                    <h2>🖥️ Área de Controlo e Monitorização Local</h2>
                 </div>
-                <div class="video-container" id="screenCanvas" onmousemove="capturarRato(event)" onclick="enviarClique(event)">
-                    <video id="remoteScreen" autoplay playsinline muted></video>
-                    <div class="video-overlay" id="streamStatus">🔴 Disposto Offline (Aguardando P2P)</div>
+                <div class="video-container" id="screenCanvas" onclick="enviarCliqueDireto(event)">
+                    <!-- O feed de vídeo pode ser injetado diretamente aqui se o teu agente local transmitir stream -->
+                    <div class="video-overlay" id="streamStatus">🔴 Desconectado (A verificar rede...)</div>
                 </div>
                 <div style="margin-top: 12px; color: var(--text-sub); font-size: 12px; text-align: center;">
-                    💡 Clique e mova o rato dentro da área preta para enviar as coordenadas de controlo ao PC remoto.
+                    💡 Os cliques efetuados nesta área preta serão enviados diretamente para as coordenadas correspondentes do PC Alvo.
                 </div>
             </div>
 
@@ -211,46 +204,34 @@
             </div>
         </div>
 
-        <!-- COLUNA DIREITA: REDE, APARELHAMENTO E LOGS -->
+        <!-- COLUNA DIREITA: CONFIGURAÇÃO DE LIGAÇÃO DIRETA E LOGS -->
         <div>
             <div class="panel-card">
                 <div class="panel-header">
-                    <h2>🔗 Sincronização e Pareamento P2P</h2>
+                    <h2>🔗 Sincronização IP Direta</h2>
                 </div>
                 <div class="row-inputs">
-                    <div>
-                        <label>IP Alvo:</label>
-                        <input type="text" id="targetIp" value="192.168.1.10">
-                    </div>
-                    <div>
-                        <label>Endereço MAC (Para WoL):</label>
-                        <input type="text" id="targetMac" value="00:1A:2B:3C:4D:5E" placeholder="AA:BB:CC...">
+                    <div style="grid-column: span 2;">
+                        <label>IP do PC Alvo (Porta padrão: 3000):</label>
+                        <input type="text" id="targetIp" value="192.168.0.100" onchange="inicializarConexaoDireta()">
                     </div>
                 </div>
-                
-                <label>Ação Inicial:</label>
-                <button class="secondary" style="width:100%; margin-bottom:12px;" onclick="iniciarMalhaP2P()">1. Gerar Token de Pareamento</button>
-                
-                <label>Sinalização SDP:</label>
-                <textarea id="p2pToken" placeholder="Cole o token do PC remoto aqui para fechar o túnel..."></textarea>
-                
-                <button style="width:100%; margin-top:12px;" onclick="conectarMalhaP2P()">2. Confirmar Conexão Direta</button>
+                <button class="success" style="margin-top: 8px;" onclick="inicializarConexaoDireta()">Forçar Reconexão</button>
             </div>
 
             <div class="panel-card">
                 <div class="panel-header">
-                    <h2>📡 Consola de Tráfego de Rede</h2>
+                    <h2>📡 Consola de Tráfego Local</h2>
                 </div>
-                <div id="terminal-output">>> Terminal pronto. Aguardando interação...</div>
+                <div id="terminal-output">>> Inicializando módulos...</div>
             </div>
         </div>
 
     </div>
 
+    <!-- LOGICA DE COMUNICAÇÃO DIRETA POR WEBSOCKET -->
     <script>
-        let rtcConnection;
-        let rtcChannel;
-        const iceConfiguration = { iceServers: [{ urls: "stun:://google.com" }] };
+        let socket;
 
         function printLog(text) {
             const out = document.getElementById('terminal-output');
@@ -258,12 +239,35 @@
             out.scrollTop = out.scrollHeight;
         }
 
-        // --- SISTEMA WEB SYNC (WEBRTC) P2P ---
-        async function iniciarMalhaP2P() {
+        function inicializarConexaoDireta() {
+            const ipAlvo = document.getElementById('targetIp').value.trim();
+            const urlSocket = `ws://${ipAlvo}:3000`;
+            
+            printLog(`A tentar conectar diretamente a ${urlSocket}...`);
+            
+            if (socket) {
+                socket.close();
+            }
+
             try {
-                rtcConnection = new RTCPeerConnection(iceConfiguration);
-                atribuirEventosAoCanal(rtcConnection.createDataChannel("universalBridge"));
-                
-                // Configuração para capturar o stream de vídeo remoto assim que for enviado pelo agente
-                rtcConnection.ontrack = event => {
-                    const video = document.getElementById('remoteScreen');
+                socket = new WebSocket(urlSocket);
+
+                socket.onopen = () => {
+                    printLog("🟢 CONEXÃO ESTABELECIDA! Canal direto ativo sem tokens.");
+                    const status = document.getElementById('streamStatus');
+                    status.innerText = "🟢 Conectado ao Agente Local";
+                    status.style.background = "#107c41";
+                };
+
+                socket.onclose = () => {
+                    printLog("🔴 Conexão encerrada pelo host ou indisponível.");
+                    const status = document.getElementById('streamStatus');
+                    status.innerText = "🔴 Desconectado (Host Offline)";
+                    status.style.background = "rgba(0,0,0,0.75)";
+                };
+
+                socket.onerror = (error) => {
+                    printLog("❌ Erro na ligação WebSocket. Certifica-te de que o servidor local está a correr na porta 3000.");
+                };
+
+            } catch (err) {
