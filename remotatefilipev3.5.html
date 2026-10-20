@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controlo Total & Monitorização P2P</title>
+    <style>
+        :root {
+            --bg-main: #0c0c0e;
+            --bg-card: #16161a;
+            --border: #24242b;
+            --accent: #0078d7;
+            --accent-danger: #d83b01;
+            --text-main: #f1f1f4;
+            --text-sub: #9696a0;
+            --status-green: #107c41;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dashboard-title {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .dashboard-title h1 { margin: 0 0 8px 0; font-size: 32px; letter-spacing: -0.5px; }
+        .dashboard-title p { color: var(--text-sub); margin: 0; }
+
+        .layout-container {
+            width: 100%;
+            max-width: 1100px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .layout-container { grid-template-columns: 1fr; }
+        }
+
+        .panel-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            margin-bottom: 24px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+
+        .panel-header h2 { margin: 0; font-size: 18px; font-weight: 600; }
+
+        /* MÓDULO DE VÍDEO (ECRÃ REMOTO) */
+        .video-container {
+            position: relative;
+            background-color: #000;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 16/9;
+            width: 100%;
+            cursor: crosshair;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0,0,0,0.75);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .row-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        label { display: block; font-size: 13px; color: var(--text-sub); margin-bottom: 6px; font-weight: 500; }
+        select, input, textarea {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        textarea { height: 60px; resize: none; font-family: monospace; font-size: 11px; }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover { background-color: #005a9e; transform: translateY(-1px); }
+        button.secondary { background-color: #24242b; border: 1px solid var(--border); }
+        button.secondary:hover { background-color: #2f2f38; }
+        button.danger { background-color: var(--accent-danger); }
+        button.danger:hover { background-color: #b33000; }
+        button.success { background-color: var(--status-green); }
+        button.success:hover { background-color: #0e6b37; }
+
+        #terminal-output {
+            background-color: #040405;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #8ed0f9;
+            height: 180px;
+            overflow-y: auto;
+            text-align: left;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-title">
+        <h1>🎛️ Painel de Controlo Total & Periféricos</h1>
+        <p>Acesso Completo a Dispositivos Remotos em Rede Local (192.168.X.X)</p>
+    </div>
+
+    <div class="layout-container">
+        
+        <!-- COLUNA ESQUERDA: STREAMING E MOUSE INPUT -->
+        <div>
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>🖥️ Ecrã Remoto em Tempo Real (WebRTC Video)</h2>
+                </div>
+                <div class="video-container" id="screenCanvas" onmousemove="capturarRato(event)" onclick="enviarClique(event)">
+                    <video id="remoteScreen" autoplay playsinline muted></video>
+                    <div class="video-overlay" id="streamStatus">🔴 Disposto Offline (Aguardando P2P)</div>
+                </div>
+                <div style="margin-top: 12px; color: var(--text-sub); font-size: 12px; text-align: center;">
+                    💡 Clique e mova o rato dentro da área preta para enviar as coordenadas de controlo ao PC remoto.
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>⌨️ Controlo Global de Energia & Hardware</h2>
+                </div>
+                <div class="row-inputs">
+                    <div>
+                        <label>Comandos de Alimentação (Energia):</label>
+                        <div class="btn-group">
+                            <button class="success" onclick="enviarSinalRede('WAKE_ON_LAN')">⚡ Ligar (WoL)</button>
+                            <button class="danger" onclick="enviarSinalRede('SHUTDOWN')">🛑 Desligar PC</button>
+                            <button class="secondary" onclick="enviarSinalRede('REBOOT')">🔄 Reiniciar</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Ações Rápidas de Periféricos:</label>
+                        <div class="btn-group">
+                            <button class="secondary" onclick="enviarSinalRede('VOL_UP')">🔊 Vol +</button>
+                            <button class="secondary" onclick="enviarSinalRede('VOL_DOWN')">🔉 Vol -</button>
+                            <button class="secondary" onclick="enviarSinalRede('MUTAR')">🔇 Mute</button>
+                            <button class="secondary" onclick="enviarSinalRede('MONITOR_OFF')">🖥️ Ecrã Off</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUNA DIREITA: REDE, APARELHAMENTO E LOGS -->
+        <div>
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>🔗 Sincronização e Pareamento P2P</h2>
+                </div>
+                <div class="row-inputs">
+                    <div>
+                        <label>IP Alvo:</label>
+                        <input type="text" id="targetIp" value="192.168.1.10">
+                    </div>
+                    <div>
+                        <label>Endereço MAC (Para WoL):</label>
+                        <input type="text" id="targetMac" value="00:1A:2B:3C:4D:5E" placeholder="AA:BB:CC...">
+                    </div>
+                </div>
+                
+                <label>Ação Inicial:</label>
+                <button class="secondary" style="width:100%; margin-bottom:12px;" onclick="iniciarMalhaP2P()">1. Gerar Token de Pareamento</button>
+                
+                <label>Sinalização SDP:</label>
+                <textarea id="p2pToken" placeholder="Cole o token do PC remoto aqui para fechar o túnel..."></textarea>
+                
+                <button style="width:100%; margin-top:12px;" onclick="conectarMalhaP2P()">2. Confirmar Conexão Direta</button>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>📡 Consola de Tráfego de Rede</h2>
+                </div>
+                <div id="terminal-output">>> Terminal pronto. Aguardando interação...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let rtcConnection;
+        let rtcChannel;
+        const iceConfiguration = { iceServers: [{ urls: "stun:://google.com" }] };
+
+        function printLog(text) {
+            const out = document.getElementById('terminal-output');
+            out.innerHTML += `<br>[${new Date().toLocaleTimeString()}] ${text}`;
+            out.scrollTop = out.scrollHeight;
+        }
+
+        // --- SISTEMA WEB SYNC (WEBRTC) P2P ---
+        async function iniciarMalhaP2P() {
+            try {
+                rtcConnection = new RTCPeerConnection(iceConfiguration);
+                atribuirEventosAoCanal(rtcConnection.createDataChannel("universalBridge"));
+                
+                // Configuração para capturar o stream de vídeo remoto assim que for enviado pelo agente
+                rtcConnection.ontrack = event => {
+                    const video = document.getElementById('remoteScreen');
